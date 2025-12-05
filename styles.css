@@ -1,0 +1,149 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 10px;
+  background-color: #f9f9f9;
+  color: #333;
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 18px;
+}
+.desc {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 15px;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  background-color: #1d4ed8;
+}
+
+#status {
+  margin-top: 10px;
+  font-size: 12px;
+  min-height: 15px;
+  color: red;
+}
+
+.table-container {
+  margin-top: 15px;
+  margin-bottom: 15px;
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  background: white;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+tr:nth-child(even) {
+  background-color: #fcfcfc;
+}
+
+/* Ensure padding doesn't break width: 100% */
+* {
+  box-sizing: border-box;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600; /* Matches th weight */
+  color: #333;
+}
+
+select,
+textarea {
+  width: 100%;
+  padding: 8px 10px; /* Matches button padding logic */
+  border: 1px solid #e5e7eb; /* Matches table border */
+  border-radius: 6px; /* Matches button/container radius */
+  background-color: white;
+  font-family: monospace;
+  font-size: 13px;
+  color: #333;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Focus states matching the button blue */
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Custom styling for Select to remove default browser arrow and add a clean one */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  padding-right: 30px; /* Make space for the arrow */
+  cursor: pointer;
+}
+
+textarea {
+  resize: vertical; /* Allow height resize only */
+  min-height: 80px;
+  line-height: 1.4;
+}
+
+/* Placeholder text color to match .desc vibe */
+::placeholder {
+  color: #a3a3a3;
+}
+
+/* .execute-tool-container {
+  margin-top: 15px;
+} */
+
+/* Disabled state matching the table header gray */
+select:disabled,
+textarea:disabled,
+button:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+  border: 1px solid #e5e7eb;
+}

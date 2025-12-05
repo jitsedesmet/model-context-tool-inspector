@@ -63,8 +63,10 @@ chrome.runtime.onMessage.addListener(({ message, tools, url }) => {
     const option = document.createElement('option');
     option.textContent = `"${item.name}"`;
     option.value = item.name;
+    option.dataset.inputSchema = item.inputSchema;
     toolNames.appendChild(option);
   });
+  updateDefaultValueForInputArgs();
 });
 
 executeBtn.onclick = async () => {
@@ -76,4 +78,73 @@ executeBtn.onclick = async () => {
 
 tbody.ondblclick = () => {
   tbody.classList.toggle('prettify');
+};
+
+toolNames.onchange = updateDefaultValueForInputArgs;
+
+function updateDefaultValueForInputArgs() {
+  const inputSchema = toolNames.selectedOptions[0].dataset.inputSchema;
+  const template = generateTemplateFromSchema(JSON.parse(inputSchema));
+  inputArgsText.value = JSON.stringify(template, '', ' ');
+}
+
+function generateTemplateFromSchema(schema) {
+  if (!schema || typeof schema !== 'object') {
+    return null;
+  }
+
+  if (schema.hasOwnProperty('default')) {
+    return schema.default;
+  }
+
+  if (Array.isArray(schema.examples) && schema.examples.length > 0) {
+    return schema.examples[0];
+  }
+
+  switch (schema.type) {
+    case 'object':
+      const obj = {};
+      // Traverse 'properties' if they exist
+      if (schema.properties) {
+        Object.keys(schema.properties).forEach((key) => {
+          obj[key] = generateTemplateFromSchema(schema.properties[key]);
+        });
+      }
+      return obj;
+
+    case 'array':
+      // For arrays, we generate a single item based on the 'items' schema
+      // to show what the array structure looks like.
+      if (schema.items) {
+        return [generateTemplateFromSchema(schema.items)];
+      }
+      return [];
+
+    case 'string':
+      if (schema.enum && schema.enum.length > 0) {
+        return schema.enum[0]; // Return first enum option
+      }
+      if (schema.format === 'date-time' || schema.format === 'date') {
+        return new Date().toISOString();
+      }
+      if (schema.format === 'email') {
+        return 'user@example.com';
+      }
+      return 'example_string';
+
+    case 'number':
+    case 'integer':
+      if (schema.minimum !== undefined) return schema.minimum;
+      return 0;
+
+    case 'boolean':
+      return false;
+
+    case 'null':
+      return null;
+
+    default:
+      // Fallback for "any" types or undefined types
+      return {};
+  }
 }

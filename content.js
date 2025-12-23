@@ -8,7 +8,11 @@ chrome.runtime.onMessage.addListener(async ({ action, name, inputArgs }, _, repl
       navigator.modelContextTesting.registerToolsChangedCallback(listTools);
     }
     if (action == 'EXECUTE_TOOL') {
-      reply(await navigator.modelContextTesting.executeTool(name, inputArgs));
+      try {
+        reply(await navigator.modelContextTesting.executeTool(name, inputArgs));
+      } catch(error) {
+        reply(JSON.stringify(error));
+      }
     }
   } catch ({ message }) {
     chrome.runtime.sendMessage({ message });

@@ -85,7 +85,7 @@ tbody.ondblclick = () => {
 toolNames.onchange = updateDefaultValueForInputArgs;
 
 function updateDefaultValueForInputArgs() {
-  const inputSchema = toolNames.selectedOptions[0].dataset.inputSchema;
+  const inputSchema = toolNames.selectedOptions[0].dataset.inputSchema || "{}";
   const template = generateTemplateFromSchema(JSON.parse(inputSchema));
   inputArgsText.value = JSON.stringify(template, '', ' ');
 }

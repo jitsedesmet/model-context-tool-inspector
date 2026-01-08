@@ -1,10 +1,13 @@
 const statusDiv = document.getElementById('status');
 const tbody = document.getElementById('tableBody');
 const thead = document.getElementById('tableHeaderRow');
+const copyToClipboard = document.getElementById('copyToClipboard');
 const toolNames = document.getElementById('toolNames');
 const inputArgsText = document.getElementById('inputArgsText');
 const executeBtn = document.getElementById('executeBtn');
 const toolResults = document.getElementById('toolResults');
+
+let currentTools;
 
 // Inject content script first.
 (async () => {
@@ -27,6 +30,8 @@ chrome.runtime.onMessage.addListener(({ message, tools, url }) => {
   statusDiv.textContent = message;
   statusDiv.hidden = !message;
 
+  currentTools = tools;
+
   if (!tools || tools.length === 0) {
     const row = document.createElement('tr');
     row.innerHTML = `<td colspan="100%"><i>No tools registered yet in ${url}</i></td>`;
@@ -34,12 +39,14 @@ chrome.runtime.onMessage.addListener(({ message, tools, url }) => {
     inputArgsText.disabled = true;
     toolNames.disabled = true;
     executeBtn.disabled = true;
+    copyToClipboard.hidden = true;
     return;
   }
 
   inputArgsText.disabled = false;
   toolNames.disabled = false;
   executeBtn.disabled = false;
+  copyToClipboard.hidden = false;
 
   const keys = Object.keys(tools[0]);
   keys.forEach((key) => {
@@ -81,6 +88,17 @@ executeBtn.onclick = async () => {
 tbody.ondblclick = () => {
   tbody.classList.toggle('prettify');
 };
+
+copyToClipboard.onclick = async () => {
+  const text = currentTools.map(tool => {
+    return `\
+script_tools {
+  name: "${tool.name}"
+  description: "${tool.description}"
+  input_schema: ${JSON.stringify(tool.inputSchema || { "type": "object", "properties": {} })}
+}`}).join('\r\n');
+  await navigator.clipboard.writeText(text);
+}
 
 toolNames.onchange = updateDefaultValueForInputArgs;
 

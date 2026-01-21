@@ -1,4 +1,4 @@
-import { GoogleGenAI } from './genai.js';
+import { GoogleGenAI } from './node_modules/@google/genai/dist/web/index.mjs';
 import env from './.env.json' with { type: 'json' };
 
 const statusDiv = document.getElementById('status');

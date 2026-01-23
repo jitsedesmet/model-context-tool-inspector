@@ -1,4 +1,4 @@
-import { GoogleGenAI } from './node_modules/@google/genai/dist/web/index.mjs';
+import { GoogleGenAI } from './js-genai.js';
 
 const statusDiv = document.getElementById('status');
 const tbody = document.getElementById('tableBody');

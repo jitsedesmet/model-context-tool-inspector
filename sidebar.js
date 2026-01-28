@@ -26,6 +26,7 @@ const promptResults = document.getElementById('promptResults');
     const statusDiv = document.getElementById('status');
     statusDiv.textContent = error;
     statusDiv.hidden = false;
+    copyToClipboard.hidden = true;
   }
 })();
 

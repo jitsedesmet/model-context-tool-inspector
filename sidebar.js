@@ -42,7 +42,7 @@ let userPromptPendingId = 0;
 // Listen for the results coming back from content.js
 chrome.runtime.onMessage.addListener(async ({ message, tools, url }, sender) => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (sender.tab.id !== tab.id) return;
+  if (sender.tab && sender.tab.id !== tab.id) return;
 
   tbody.innerHTML = '';
   thead.innerHTML = '';
@@ -57,8 +57,9 @@ chrome.runtime.onMessage.addListener(async ({ message, tools, url }, sender) => 
 
   if (!tools || tools.length === 0) {
     const row = document.createElement('tr');
-    row.innerHTML = `<td colspan="100%"><i>No tools registered yet in ${url}</i></td>`;
+    row.innerHTML = `<td colspan="100%"><i>No tools registered yet in ${url || tab.url}</i></td>`;
     tbody.appendChild(row);
+    inputArgsText.value = '';
     inputArgsText.disabled = true;
     toolNames.disabled = true;
     executeBtn.disabled = true;
@@ -264,11 +265,12 @@ resetBtn.onclick = () => {
   promptResults.textContent = '';
 };
 
-apiKeyBtn.onclick = () => {
+apiKeyBtn.onclick = async () => {
   const apiKey = prompt('Enter Gemini API key');
   if (apiKey == null) return;
   localStorage.apiKey = apiKey;
-  initGenAI();
+  await initGenAI();
+  if (currentTools.length) suggestUserPrompt();
 };
 
 traceBtn.onclick = async () => {

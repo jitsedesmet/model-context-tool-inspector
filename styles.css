@@ -15,10 +15,6 @@ h2 {
   font-size: 18px;
 }
 
-#userPromptText {
-  min-height: 34px;
-}
-
 button {
   padding: 8px 10px;
   background-color: #2563eb;

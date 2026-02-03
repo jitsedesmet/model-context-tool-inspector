@@ -192,14 +192,11 @@ userPromptText.onkeydown = (event) => {
 };
 
 promptBtn.onclick = async () => {
-  promptBtn.disabled = true;
   try {
     await promptAI();
   } catch (error) {
     trace.push({ error });
     logPrompt(`⚠️ Error: "${error}"`);
-  } finally {
-    promptBtn.disabled = false;
   }
 };
 

@@ -38,6 +38,7 @@ const promptResults = document.getElementById('promptResults');
 let currentTools;
 
 let userPromptPendingId = 0;
+let lastSuggestedUserPrompt = '';
 
 // Listen for the results coming back from content.js
 chrome.runtime.onMessage.addListener(async ({ message, tools, url }, sender) => {
@@ -155,7 +156,7 @@ async function initGenAI() {
 initGenAI();
 
 async function suggestUserPrompt() {
-  if (!genAI || userPromptText.value) return;
+  if (currentTools.length == 0 || !genAI || userPromptText.value !== lastSuggestedUserPrompt) return;
   const userPromptId = ++userPromptPendingId;
   const response = await genAI.models.generateContent({
     model: localStorage.model,
@@ -174,7 +175,9 @@ async function suggestUserPrompt() {
       JSON.stringify(currentTools),
     ],
   });
-  if (userPromptId !== userPromptPendingId || userPromptText.value) return;
+  if (userPromptId !== userPromptPendingId || userPromptText.value !== lastSuggestedUserPrompt) return;
+  lastSuggestedUserPrompt = response.text;
+  userPromptText.value = '';
   for (const chunk of response.text) {
     await new Promise((r) => requestAnimationFrame(r));
     userPromptText.value += chunk;
@@ -209,6 +212,7 @@ async function promptAI() {
 
   const message = userPromptText.value;
   userPromptText.value = '';
+  lastSuggestedUserPrompt = '';
   promptResults.textContent += `User prompt: "${message}"\n`;
   const sendMessageParams = { message, config: getConfig() };
   trace.push({ userPrompt: sendMessageParams });
@@ -262,7 +266,9 @@ resetBtn.onclick = () => {
   chat = undefined;
   trace = [];
   userPromptText.value = '';
+  lastSuggestedUserPrompt = '';
   promptResults.textContent = '';
+  suggestUserPrompt();
 };
 
 apiKeyBtn.onclick = async () => {
@@ -270,7 +276,7 @@ apiKeyBtn.onclick = async () => {
   if (apiKey == null) return;
   localStorage.apiKey = apiKey;
   await initGenAI();
-  if (currentTools.length) suggestUserPrompt();
+  suggestUserPrompt();
 };
 
 traceBtn.onclick = async () => {

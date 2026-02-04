@@ -394,11 +394,17 @@ function generateTemplateFromSchema(schema) {
       if (schema.format === 'date-time') {
         return new Date().toISOString();
       }
-      if (
-        schema.format === 'time' ||
-        schema.format === '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\\.[0-9]{1,3})?)?$'
-      ) {
+      if (schema.format === '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\\.[0-9]{1,3})?)?$') {
+        return new Date().toISOString().substring(11, 23);
+      }
+      if (schema.format === '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$') {
+        return new Date().toISOString().substring(11, 19);
+      }
+      if (schema.format === '^([01][0-9]|2[0-3]):[0-5][0-9]$') {
         return new Date().toISOString().substring(11, 16);
+      }
+      if (schema.format === '^#[0-9a-zA-Z]{6}$') {
+        return '#ff00ff';
       }
       if (schema.format === 'tel') {
         return '123-456-7890';

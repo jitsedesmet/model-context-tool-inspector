@@ -8,9 +8,7 @@ console.debug('[WebMCP] Content script injected');
 chrome.runtime.onMessage.addListener(({ action, name, inputArgs }, _, reply) => {
   try {
     if (!navigator.modelContextTesting) {
-      throw new Error(
-        'Error: You must run Chrome with the "Enables WebMCP for Testing" flag enabled.',
-      );
+      throw new Error('Error: You must run Chrome with the "WebMCP for testing" flag enabled.');
     }
     if (action == 'LIST_TOOLS') {
       listTools();

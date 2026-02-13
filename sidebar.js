@@ -21,6 +21,7 @@ const traceBtn = document.getElementById('traceBtn');
 const resetBtn = document.getElementById('resetBtn');
 const apiKeyBtn = document.getElementById('apiKeyBtn');
 const promptResults = document.getElementById('promptResults');
+const modelSelect = document.getElementById('modelSelect');
 
 // Inject content script first.
 (async () => {
@@ -149,6 +150,10 @@ async function initGenAI() {
   } catch {}
   if (env?.apiKey) localStorage.apiKey ??= env.apiKey;
   localStorage.model ??= env?.model || 'gemini-2.5-flash';
+  
+  // Set the model selector to the saved value
+  modelSelect.value = localStorage.model;
+  
   genAI = localStorage.apiKey ? new GoogleGenAI({ apiKey: localStorage.apiKey }) : undefined;
   promptBtn.disabled = !localStorage.apiKey;
   resetBtn.disabled = !localStorage.apiKey;
@@ -275,6 +280,15 @@ apiKeyBtn.onclick = async () => {
   if (apiKey == null) return;
   localStorage.apiKey = apiKey;
   await initGenAI();
+  suggestUserPrompt();
+};
+
+modelSelect.onchange = () => {
+  localStorage.model = modelSelect.value;
+  // Reset the chat when model changes to avoid mixing contexts
+  chat = undefined;
+  trace = [];
+  promptResults.textContent = '';
   suggestUserPrompt();
 };
 

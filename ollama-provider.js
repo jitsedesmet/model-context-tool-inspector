@@ -77,9 +77,9 @@ export class OllamaProvider extends AIProvider {
       if (error.isAPIError) {
         throw error;
       }
-      // Network error (e.g., Ollama not running)
+      // Network or other error (e.g., Ollama not running, timeout, DNS issues)
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to connect to Ollama at ${this.baseUrl}. Please ensure Ollama is running. Error: ${message}`);
+      throw new Error(`Failed to communicate with Ollama at ${this.baseUrl}. Please ensure Ollama is running and accessible. Error: ${message}`);
     }
   }
 
@@ -214,9 +214,9 @@ class OllamaChat extends Chat {
       if (error.isAPIError) {
         throw error;
       }
-      // Network error (e.g., Ollama not running)
+      // Network or other error (e.g., Ollama not running, timeout, DNS issues)
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to connect to Ollama at ${this.baseUrl}. Please ensure Ollama is running. Error: ${message}`);
+      throw new Error(`Failed to communicate with Ollama at ${this.baseUrl}. Please ensure Ollama is running and accessible. Error: ${message}`);
     }
   }
 }

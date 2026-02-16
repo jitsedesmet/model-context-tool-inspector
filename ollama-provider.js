@@ -63,7 +63,9 @@ export class OllamaProvider extends AIProvider {
         } catch (e) {
           // Response body is not JSON, ignore
         }
-        throw new Error(errorMessage);
+        const apiError = new Error(errorMessage);
+        apiError.isAPIError = true;
+        throw apiError;
       }
 
       const data = await response.json();
@@ -71,13 +73,13 @@ export class OllamaProvider extends AIProvider {
         text: data.response || ''
       };
     } catch (error) {
-      // Handle network errors and other fetch failures
-      if (error.message.includes('Ollama API error:')) {
-        // Re-throw API errors as-is
+      // Re-throw API errors as-is
+      if (error.isAPIError) {
         throw error;
       }
       // Network error (e.g., Ollama not running)
-      throw new Error(`Failed to connect to Ollama at ${this.baseUrl}. Please ensure Ollama is running. Error: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to connect to Ollama at ${this.baseUrl}. Please ensure Ollama is running. Error: ${message}`);
     }
   }
 
@@ -173,7 +175,9 @@ class OllamaChat extends Chat {
         } catch (e) {
           // Response body is not JSON, ignore
         }
-        throw new Error(errorMessage);
+        const apiError = new Error(errorMessage);
+        apiError.isAPIError = true;
+        throw apiError;
       }
 
       const data = await response.json();
@@ -206,13 +210,13 @@ class OllamaChat extends Chat {
         candidates: [{ content: { parts: [{ text: assistantMessage }] } }]
       };
     } catch (error) {
-      // Handle network errors and other fetch failures
-      if (error.message.includes('Ollama API error:')) {
-        // Re-throw API errors as-is
+      // Re-throw API errors as-is
+      if (error.isAPIError) {
         throw error;
       }
       // Network error (e.g., Ollama not running)
-      throw new Error(`Failed to connect to Ollama at ${this.baseUrl}. Please ensure Ollama is running. Error: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to connect to Ollama at ${this.baseUrl}. Please ensure Ollama is running. Error: ${message}`);
     }
   }
 }

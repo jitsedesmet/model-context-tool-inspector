@@ -286,30 +286,35 @@ async function suggestUserPrompt() {
   if (currentTools.length == 0 || !aiProvider || userPromptText.value !== lastSuggestedUserPrompt)
     return;
   const userPromptId = ++userPromptPendingId;
-  const response = await aiProvider.generateContent({
-    model: localStorage.model,
-    contents: [
-      '**Context:**',
-      `Today's date is: ${getFormattedDate()}`,
-      '**Tool Rules:**',
-      '1. **Bank Transaction Filter:** Use **PAST** dates only (e.g., "last month," "December 15th," "yesterday").',
-      '2. **Flight Search:** Use **FUTURE** dates only (e.g., "next week," "February 15th").',
-      '3. **Accommodation Search:** Use **FUTURE** dates only (e.g., "next weekend," "March 15th").',
-      '**Task:**',
-      'Generate one natural user query for a range of tools below, ideally chaining them together.',
-      'Ensure the date makes sense relative to today.',
-      'Output the query text only.',
-      '**Tools:**',
-      JSON.stringify(currentTools),
-    ],
-  });
-  if (userPromptId !== userPromptPendingId || userPromptText.value !== lastSuggestedUserPrompt)
-    return;
-  lastSuggestedUserPrompt = response.text;
-  userPromptText.value = '';
-  for (const chunk of response.text) {
-    await new Promise((r) => requestAnimationFrame(r));
-    userPromptText.value += chunk;
+  try {
+    const response = await aiProvider.generateContent({
+      model: localStorage.model,
+      contents: [
+        '**Context:**',
+        `Today's date is: ${getFormattedDate()}`,
+        '**Tool Rules:**',
+        '1. **Bank Transaction Filter:** Use **PAST** dates only (e.g., "last month," "December 15th," "yesterday").',
+        '2. **Flight Search:** Use **FUTURE** dates only (e.g., "next week," "February 15th").',
+        '3. **Accommodation Search:** Use **FUTURE** dates only (e.g., "next weekend," "March 15th").',
+        '**Task:**',
+        'Generate one natural user query for a range of tools below, ideally chaining them together.',
+        'Ensure the date makes sense relative to today.',
+        'Output the query text only.',
+        '**Tools:**',
+        JSON.stringify(currentTools),
+      ],
+    });
+    if (userPromptId !== userPromptPendingId || userPromptText.value !== lastSuggestedUserPrompt)
+      return;
+    lastSuggestedUserPrompt = response.text;
+    userPromptText.value = '';
+    for (const chunk of response.text) {
+      await new Promise((r) => requestAnimationFrame(r));
+      userPromptText.value += chunk;
+    }
+  } catch (error) {
+    console.error('Failed to generate suggested prompt:', error);
+    // Silently fail for prompt suggestions - this is not critical functionality
   }
 }
 

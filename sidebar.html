@@ -35,6 +35,32 @@
       <div class="section-content">
 
       <div class="form-group">
+        <label for="providerSelect">AI Provider</label>
+        <select id="providerSelect">
+          <option value="gemini">Google Gemini</option>
+          <option value="ollama">Local Ollama</option>
+        </select>
+      </div>
+
+      <div id="geminiConfig" class="provider-config">
+        <div class="form-group">
+          <button id="apiKeyBtn" class="secondary">Set Gemini API key</button>
+        </div>
+      </div>
+
+      <div id="ollamaConfig" class="provider-config" style="display: none;">
+        <div class="form-group">
+          <label for="ollamaUrl">Ollama URL</label>
+          <input type="text" id="ollamaUrl" placeholder="http://localhost:11434" />
+        </div>
+        <div class="form-group">
+          <button id="testOllamaBtn" class="secondary">Test Connection</button>
+          <button id="saveOllamaBtn" class="secondary">Save Ollama Settings</button>
+        </div>
+        <div id="ollamaTestResult" style="margin-top: 8px; padding: 8px; border-radius: 4px; font-size: 12px; display: none;"></div>
+      </div>
+
+      <div class="form-group">
         <label for="userPromptText">User Prompt</label>
         <textarea id="userPromptText"></textarea>
       </div>
@@ -53,7 +79,6 @@
       <div class="form-group">
         <button id="promptBtn" disabled>Send</button>
         <button id="resetBtn" class="secondary" disabled>Reset</button>
-        <button id="apiKeyBtn" class="secondary">Set Gemini API key</button>
         <button id="traceBtn" class="secondary">Copy trace</button>
       </div>
 

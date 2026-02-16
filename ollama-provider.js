@@ -42,33 +42,45 @@ export class OllamaProvider extends AIProvider {
     const contents = Array.isArray(params.contents) ? params.contents : [params.contents];
     const prompt = contents.join('\n');
 
-    const response = await fetch(`${this.baseUrl}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        prompt,
-        stream: false
-      })
-    });
+    try {
+      const response = await fetch(`${this.baseUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          prompt,
+          stream: false
+        })
+      });
 
-    if (!response.ok) {
-      let errorMessage = `Ollama API error: ${response.status} ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.error) {
-          errorMessage += ` - ${errorData.error}`;
+      if (!response.ok) {
+        let errorMessage = `Ollama API error: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage += ` - ${errorData.error}`;
+          }
+        } catch (e) {
+          // Response body is not JSON, ignore
         }
-      } catch (e) {
-        // Response body is not JSON, ignore
+        const apiError = new Error(errorMessage);
+        apiError.isAPIError = true;
+        throw apiError;
       }
-      throw new Error(errorMessage);
-    }
 
-    const data = await response.json();
-    return {
-      text: data.response || ''
-    };
+      const data = await response.json();
+      return {
+        text: data.response || ''
+      };
+    } catch (error) {
+      // Re-throw API errors as-is
+      if (error.isAPIError) {
+        throw error;
+      }
+      // Network or other error (e.g., Ollama not running, timeout, DNS issues)
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to communicate with Ollama at ${this.baseUrl}. Please ensure Ollama is running and accessible. Error: ${message}`);
+    }
   }
 
   getName() {
@@ -141,58 +153,70 @@ class OllamaChat extends Chat {
     }
     ollamaMessages.push(...this.messages);
 
-    // Call Ollama chat API
-    const response = await fetch(`${this.baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: this.model,
-        messages: ollamaMessages,
-        stream: false
-      })
-    });
+    try {
+      // Call Ollama chat API
+      const response = await fetch(`${this.baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: this.model,
+          messages: ollamaMessages,
+          stream: false
+        })
+      });
 
-    if (!response.ok) {
-      let errorMessage = `Ollama API error: ${response.status} ${response.statusText}`;
+      if (!response.ok) {
+        let errorMessage = `Ollama API error: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage += ` - ${errorData.error}`;
+          }
+        } catch (e) {
+          // Response body is not JSON, ignore
+        }
+        const apiError = new Error(errorMessage);
+        apiError.isAPIError = true;
+        throw apiError;
+      }
+
+      const data = await response.json();
+      const assistantMessage = data.message?.content || '';
+
+      // Store assistant response
+      this.messages.push({
+        role: 'assistant',
+        content: assistantMessage
+      });
+
+      // Try to parse function calls from response
+      let functionCalls = [];
       try {
-        const errorData = await response.json();
-        if (errorData.error) {
-          errorMessage += ` - ${errorData.error}`;
+        // Look for JSON in the response
+        const jsonMatch = assistantMessage.match(/\{[\s\S]*"functionCalls"[\s\S]*}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.functionCalls && Array.isArray(parsed.functionCalls)) {
+            functionCalls = parsed.functionCalls;
+          }
         }
       } catch (e) {
-        // Response body is not JSON, ignore
+        // Not a function call, treat as regular text response
       }
-      throw new Error(errorMessage);
-    }
 
-    const data = await response.json();
-    const assistantMessage = data.message?.content || '';
-
-    // Store assistant response
-    this.messages.push({
-      role: 'assistant',
-      content: assistantMessage
-    });
-
-    // Try to parse function calls from response
-    let functionCalls = [];
-    try {
-      // Look for JSON in the response
-      const jsonMatch = assistantMessage.match(/\{[\s\S]*"functionCalls"[\s\S]*}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (parsed.functionCalls && Array.isArray(parsed.functionCalls)) {
-          functionCalls = parsed.functionCalls;
-        }
+      return {
+        text: assistantMessage,
+        functionCalls: functionCalls,
+        candidates: [{ content: { parts: [{ text: assistantMessage }] } }]
+      };
+    } catch (error) {
+      // Re-throw API errors as-is
+      if (error.isAPIError) {
+        throw error;
       }
-    } catch (e) {
-      // Not a function call, treat as regular text response
+      // Network or other error (e.g., Ollama not running, timeout, DNS issues)
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to communicate with Ollama at ${this.baseUrl}. Please ensure Ollama is running and accessible. Error: ${message}`);
     }
-
-    return {
-      text: assistantMessage,
-      functionCalls: functionCalls,
-      candidates: [{ content: { parts: [{ text: assistantMessage }] } }]
-    };
   }
 }

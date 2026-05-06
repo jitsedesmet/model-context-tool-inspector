@@ -462,8 +462,9 @@ testOllamaBtn.onclick = async () => {
       return;
     }
 
-    // Test 2: Try a simple chat request
-    const testModel = models[0].name;
+    // Test 2: Try a simple chat request (prefer a local model over cloud ones)
+    const localModel = models.find(m => !m.remote_host);
+    const testModel = (localModel || models[0]).name;
     const chatResponse = await fetch(`${url}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

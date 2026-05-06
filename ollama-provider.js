@@ -11,7 +11,7 @@ import { AIProvider, Chat } from './ai-provider.js';
 export class OllamaProvider extends AIProvider {
   constructor(config) {
     super();
-    this.baseUrl = config.baseUrl || 'http://localhost:11434';
+    this.baseUrl = (config.baseUrl || 'http://localhost:11434').replace(/\/+$/, '');
     this.defaultModel = config.model || 'llama2';
   }
 

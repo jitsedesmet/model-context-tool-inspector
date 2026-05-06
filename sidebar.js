@@ -428,7 +428,7 @@ providerSelect.onchange = async () => {
 };
 
 saveOllamaBtn.onclick = async () => {
-  localStorage.ollamaUrl = ollamaUrl.value || 'http://localhost:11434';
+  localStorage.ollamaUrl = (ollamaUrl.value || 'http://localhost:11434').replace(/\/+$/, '');
 
   chat = undefined;
   trace = [];
@@ -439,7 +439,7 @@ saveOllamaBtn.onclick = async () => {
 };
 
 testOllamaBtn.onclick = async () => {
-  const url = ollamaUrl.value || 'http://localhost:11434';
+  const url = (ollamaUrl.value || 'http://localhost:11434').replace(/\/+$/, '');
   ollamaTestResult.style.display = 'block';
   ollamaTestResult.textContent = '🔄 Testing connection...';
   ollamaTestResult.style.backgroundColor = '#e0e7ff';

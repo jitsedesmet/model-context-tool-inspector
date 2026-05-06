@@ -249,6 +249,7 @@ async function initGenAI() {
   const provider = localStorage.provider;
   if (provider === 'gemini') {
     aiProvider = localStorage.apiKey ? new GeminiProvider({ apiKey: localStorage.apiKey }) : undefined;
+    apiKeyBtn.textContent = localStorage.apiKey ? 'Update Gemini API key' : 'Set Gemini API key';
   } else if (provider === 'ollama') {
     aiProvider = new OllamaProvider({
       baseUrl: localStorage.ollamaUrl,
@@ -280,7 +281,7 @@ function updateProviderUI() {
   }
 }
 
-initGenAI();
+await initGenAI();
 
 async function suggestUserPrompt() {
   if (currentTools.length == 0 || !aiProvider || userPromptText.value !== lastSuggestedUserPrompt)
@@ -314,7 +315,6 @@ async function suggestUserPrompt() {
     }
   } catch (error) {
     console.error('Failed to generate suggested prompt:', error);
-    // Silently fail for prompt suggestions - this is not critical functionality
   }
 }
 
@@ -368,11 +368,7 @@ async function promptAI() {
         const inputArgs = JSON.stringify(args);
         logPrompt(`AI calling tool "${name}" with ${inputArgs}`);
         try {
-          const result = await chrome.tabs.sendMessage(tab.id, {
-            action: 'EXECUTE_TOOL',
-            name,
-            inputArgs,
-          });
+          const result = await executeTool(tab.id, name, inputArgs);
           toolResponses.push({ functionResponse: { name, response: { result } } });
           logPrompt(`Tool "${name}" result: ${result}`);
         } catch (e) {
@@ -384,7 +380,8 @@ async function promptAI() {
       }
 
       // FIXME: New WebMCP tools may not be discovered if there's a navigation.
-      // An articial timeout could be introduced for mitigation but it's not robust.
+      // An articial timeout is introduced for mitigation but it's not robust enough.
+      await new Promise((r) => setTimeout(r, 500));
 
       const sendMessageParams = { message: toolResponses, config: getConfig() };
       trace.push({ userPrompt: sendMessageParams });
@@ -403,7 +400,7 @@ resetBtn.onclick = () => {
 };
 
 apiKeyBtn.onclick = async () => {
-  const apiKey = prompt('Enter Gemini API key');
+  const apiKey = prompt('Enter Gemini API key', localStorage.apiKey);
   if (apiKey == null) return;
   localStorage.apiKey = apiKey;
   await initGenAI();
@@ -412,7 +409,6 @@ apiKeyBtn.onclick = async () => {
 
 modelSelect.onchange = () => {
   localStorage.model = modelSelect.value;
-  // Reset the chat when model changes to avoid mixing contexts
   chat = undefined;
   trace = [];
   promptResults.textContent = '';
@@ -423,7 +419,6 @@ providerSelect.onchange = async () => {
   localStorage.provider = providerSelect.value;
   updateProviderUI();
 
-  // Reset chat and reinitialize provider
   chat = undefined;
   trace = [];
   promptResults.textContent = '';
@@ -435,7 +430,6 @@ providerSelect.onchange = async () => {
 saveOllamaBtn.onclick = async () => {
   localStorage.ollamaUrl = ollamaUrl.value || 'http://localhost:11434';
 
-  // Reinitialize provider with new URL
   chat = undefined;
   trace = [];
   promptResults.textContent = '';
@@ -513,18 +507,29 @@ executeBtn.onclick = async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const name = toolNames.selectedOptions[0].value;
   const inputArgs = inputArgsText.value;
-  const result = await chrome.tabs.sendMessage(tab.id, { action: 'EXECUTE_TOOL', name, inputArgs });
-  if (result !== null) {
-    toolResults.textContent = result;
-    return;
+  toolResults.textContent = await executeTool(tab.id, name, inputArgs).catch(
+    (error) => `⚠️ Error: "${error}"`,
+  );
+};
+
+async function executeTool(tabId, name, inputArgs) {
+  try {
+    const result = await chrome.tabs.sendMessage(tabId, {
+      action: 'EXECUTE_TOOL',
+      name,
+      inputArgs,
+    });
+    if (result !== null) return result;
+  } catch (error) {
+    if (!error.message.includes('message channel is closed')) throw error;
   }
   // A navigation was triggered. The result will be on the next document.
   // TODO: Handle case where a new tab is opened.
-  await waitForPageLoad(tab.id);
-  toolResults.textContent = await chrome.tabs.sendMessage(tab.id, {
+  await waitForPageLoad(tabId);
+  return await chrome.tabs.sendMessage(tabId, {
     action: 'GET_CROSS_DOCUMENT_SCRIPT_TOOL_RESULT',
   });
-};
+}
 
 toolNames.onchange = updateDefaultValueForInputArgs;
 

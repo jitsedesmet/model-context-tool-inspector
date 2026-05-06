@@ -6,6 +6,24 @@
 // Allows users to open the side panel by clicking the action icon.
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
+// Remove the Origin header from extension requests so Ollama servers
+// don't reject them (Ollama checks Origin against OLLAMA_ORIGINS).
+chrome.declarativeNetRequest.updateDynamicRules({
+  removeRuleIds: [1],
+  addRules: [{
+    id: 1,
+    priority: 1,
+    action: {
+      type: 'modifyHeaders',
+      requestHeaders: [{ header: 'Origin', operation: 'remove' }],
+    },
+    condition: {
+      initiatorDomains: [chrome.runtime.id],
+      resourceTypes: ['xmlhttprequest'],
+    },
+  }],
+});
+
 // Inject content script in all tabs first.
 chrome.runtime.onInstalled.addListener(async () => {
   const tabs = await chrome.tabs.query({});

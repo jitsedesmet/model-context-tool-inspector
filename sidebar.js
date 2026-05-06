@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GoogleGenAI } from './js-genai.js';
+import { GeminiProvider } from './gemini-provider.js';
+import { OllamaProvider } from './ollama-provider.js';
 
 const statusDiv = document.getElementById('status');
 const tbody = document.getElementById('tableBody');
@@ -21,7 +22,14 @@ const traceBtn = document.getElementById('traceBtn');
 const resetBtn = document.getElementById('resetBtn');
 const apiKeyBtn = document.getElementById('apiKeyBtn');
 const promptResults = document.getElementById('promptResults');
-const advancedSection = document.getElementById('advancedSection');
+const modelSelect = document.getElementById('modelSelect');
+const providerSelect = document.getElementById('providerSelect');
+const geminiConfig = document.getElementById('geminiConfig');
+const ollamaConfig = document.getElementById('ollamaConfig');
+const ollamaUrl = document.getElementById('ollamaUrl');
+const testOllamaBtn = document.getElementById('testOllamaBtn');
+const saveOllamaBtn = document.getElementById('saveOllamaBtn');
+const ollamaTestResult = document.getElementById('ollamaTestResult');
 
 // Inject content script first.
 (async () => {
@@ -138,9 +146,84 @@ copyAsJSON.onclick = async () => {
 
 // Interact with the page
 
-let genAI, chat;
+let aiProvider, chat;
 
 const envModulePromise = import('./.env.json', { with: { type: 'json' } });
+
+async function loadAvailableModels() {
+  if (!aiProvider) return;
+
+  // Show loading state
+  modelSelect.disabled = true;
+  modelSelect.innerHTML = '<option>Loading models...</option>';
+
+  try {
+    // Fetch available models from the provider
+    const models = await aiProvider.listModels();
+
+    console.log(`Found ${models.length} models from ${aiProvider.getName()}`);
+
+    // Clear loading message
+    modelSelect.innerHTML = '';
+
+    if (models.length > 0) {
+      // Save the current selection
+      const currentModel = localStorage.model;
+
+      // Add the fetched models
+      models.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.name;
+        option.textContent = model.displayName;
+        modelSelect.appendChild(option);
+      });
+
+      // Restore the previous selection if it's still available, otherwise use the first model
+      if (models.some(m => m.name === currentModel)) {
+        modelSelect.value = currentModel;
+      } else {
+        localStorage.model = models[0].name;
+        modelSelect.value = models[0].name;
+      }
+    } else {
+      // No models available - add fallback for Gemini
+      if (aiProvider.getName() === 'gemini') {
+        console.warn('No models with generateContent support found. Using fallback list.');
+        modelSelect.innerHTML = `
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+          <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+          <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+          <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+          <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+        `;
+      } else {
+        modelSelect.innerHTML = '<option value="">No models found. Is Ollama running?</option>';
+      }
+      if (localStorage.model) {
+        modelSelect.value = localStorage.model;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load models:', error);
+    // Restore default hardcoded models if API call fails
+    if (aiProvider.getName() === 'gemini') {
+      modelSelect.innerHTML = `
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+      `;
+    } else {
+      modelSelect.innerHTML = '<option value="">Error loading models. Check Ollama URL.</option>';
+    }
+    if (localStorage.model) {
+      modelSelect.value = localStorage.model;
+    }
+  } finally {
+    modelSelect.disabled = false;
+  }
+}
 
 async function initGenAI() {
   let env;
@@ -150,50 +233,88 @@ async function initGenAI() {
   } catch {}
   if (env?.apiKey) localStorage.apiKey ??= env.apiKey;
   localStorage.model ??= env?.model || 'gemini-2.5-flash';
-  genAI = localStorage.apiKey ? new GoogleGenAI({ apiKey: localStorage.apiKey }) : undefined;
-  promptBtn.disabled = !localStorage.apiKey;
-  resetBtn.disabled = !localStorage.apiKey;
-  apiKeyBtn.textContent = localStorage.apiKey ? 'Update Gemini API key' : 'Set Gemini API key';
+  localStorage.provider ??= 'gemini';
+  localStorage.ollamaUrl ??= 'http://localhost:11434';
+
+  // Set the provider selector to the saved value
+  if (providerSelect) providerSelect.value = localStorage.provider;
+
+  // Update UI based on provider
+  updateProviderUI();
+
+  // Set the model selector to the saved value
+  if (modelSelect) modelSelect.value = localStorage.model;
+
+  // Initialize the AI provider based on selected provider
+  const provider = localStorage.provider;
+  if (provider === 'gemini') {
+    aiProvider = localStorage.apiKey ? new GeminiProvider({ apiKey: localStorage.apiKey }) : undefined;
+    apiKeyBtn.textContent = localStorage.apiKey ? 'Update Gemini API key' : 'Set Gemini API key';
+  } else if (provider === 'ollama') {
+    aiProvider = new OllamaProvider({
+      baseUrl: localStorage.ollamaUrl,
+      model: localStorage.model
+    });
+  }
+
+  // Update button states
+  const hasProvider = !!aiProvider;
+  promptBtn.disabled = !hasProvider;
+  resetBtn.disabled = !hasProvider;
+
+  // Load available models if provider is set
+  if (aiProvider) {
+    await loadAvailableModels();
+  }
 }
+
+function updateProviderUI() {
+  const provider = localStorage.provider;
+
+  if (provider === 'gemini') {
+    geminiConfig.style.display = 'block';
+    ollamaConfig.style.display = 'none';
+  } else if (provider === 'ollama') {
+    geminiConfig.style.display = 'none';
+    ollamaConfig.style.display = 'block';
+    ollamaUrl.value = localStorage.ollamaUrl || 'http://localhost:11434';
+  }
+}
+
 await initGenAI();
 
-document.querySelectorAll('input[name="model"]').forEach((radio) => {
-  radio.checked = radio.value === localStorage.model;
-  radio.onclick = () => {
-    localStorage.model = radio.value;
-    chat = undefined;
-    advancedSection.hidePopover();
-  };
-});
-
 async function suggestUserPrompt() {
-  if (currentTools.length == 0 || !genAI || userPromptText.value !== lastSuggestedUserPrompt)
+  if (currentTools.length == 0 || !aiProvider || userPromptText.value !== lastSuggestedUserPrompt)
     return;
   const userPromptId = ++userPromptPendingId;
-  const response = await genAI.models.generateContent({
-    model: localStorage.model,
-    contents: [
-      '**Context:**',
-      `Today's date is: ${getFormattedDate()}`,
-      '**Tool Rules:**',
-      '1. **Bank Transaction Filter:** Use **PAST** dates only (e.g., "last month," "December 15th," "yesterday").',
-      '2. **Flight Search:** Use **FUTURE** dates only (e.g., "next week," "February 15th").',
-      '3. **Accommodation Search:** Use **FUTURE** dates only (e.g., "next weekend," "March 15th").',
-      '**Task:**',
-      'Generate one natural user query for a range of tools below, ideally chaining them together.',
-      'Ensure the date makes sense relative to today.',
-      'Output the query text only.',
-      '**Tools:**',
-      JSON.stringify(currentTools),
-    ],
-  });
-  if (userPromptId !== userPromptPendingId || userPromptText.value !== lastSuggestedUserPrompt)
-    return;
-  lastSuggestedUserPrompt = response.text;
-  userPromptText.value = '';
-  for (const chunk of response.text) {
-    await new Promise((r) => requestAnimationFrame(r));
-    userPromptText.value += chunk;
+  try {
+    const response = await aiProvider.generateContent({
+      model: localStorage.model,
+      contents: [
+        '**Context:**',
+        `Today's date is: ${getFormattedDate()}`,
+        '**Tool Rules:**',
+        '1. **Bank Transaction Filter:** Use **PAST** dates only (e.g., "last month," "December 15th," "yesterday").',
+        '2. **Flight Search:** Use **FUTURE** dates only (e.g., "next week," "February 15th").',
+        '3. **Accommodation Search:** Use **FUTURE** dates only (e.g., "next weekend," "March 15th").',
+        '**Task:**',
+        'Generate one natural user query for a range of tools below, ideally chaining them together.',
+        'Ensure the date makes sense relative to today.',
+        'Output the query text only.',
+        '**Tools:**',
+        JSON.stringify(currentTools),
+      ],
+    });
+    if (userPromptId !== userPromptPendingId || userPromptText.value !== lastSuggestedUserPrompt)
+      return;
+    lastSuggestedUserPrompt = response.text;
+    userPromptText.value = '';
+    for (const chunk of response.text) {
+      await new Promise((r) => requestAnimationFrame(r));
+      userPromptText.value += chunk;
+    }
+  } catch (error) {
+    console.error('Failed to generate suggested prompt:', error);
   }
 }
 
@@ -218,7 +339,7 @@ let trace = [];
 async function promptAI() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  chat ??= genAI.chats.create({ model: localStorage.model });
+  chat ??= aiProvider.createChat({ model: localStorage.model });
 
   const message = userPromptText.value;
   userPromptText.value = '';
@@ -284,6 +405,93 @@ apiKeyBtn.onclick = async () => {
   localStorage.apiKey = apiKey;
   await initGenAI();
   suggestUserPrompt();
+};
+
+modelSelect.onchange = () => {
+  localStorage.model = modelSelect.value;
+  chat = undefined;
+  trace = [];
+  promptResults.textContent = '';
+  suggestUserPrompt();
+};
+
+providerSelect.onchange = async () => {
+  localStorage.provider = providerSelect.value;
+  updateProviderUI();
+
+  chat = undefined;
+  trace = [];
+  promptResults.textContent = '';
+
+  await initGenAI();
+  suggestUserPrompt();
+};
+
+saveOllamaBtn.onclick = async () => {
+  localStorage.ollamaUrl = (ollamaUrl.value || 'http://localhost:11434').replace(/\/+$/, '');
+
+  chat = undefined;
+  trace = [];
+  promptResults.textContent = '';
+
+  await initGenAI();
+  suggestUserPrompt();
+};
+
+testOllamaBtn.onclick = async () => {
+  const url = (ollamaUrl.value || 'http://localhost:11434').replace(/\/+$/, '');
+  ollamaTestResult.style.display = 'block';
+  ollamaTestResult.textContent = '🔄 Testing connection...';
+  ollamaTestResult.style.backgroundColor = '#e0e7ff';
+  ollamaTestResult.style.color = '#3730a3';
+
+  try {
+    // Test 1: Check if Ollama is accessible
+    const tagsResponse = await fetch(`${url}/api/tags`);
+    if (!tagsResponse.ok) {
+      throw new Error(`Failed to fetch models: ${tagsResponse.status} ${tagsResponse.statusText}`);
+    }
+
+    const tagsData = await tagsResponse.json();
+    const models = tagsData.models || [];
+
+    if (models.length === 0) {
+      ollamaTestResult.textContent = '⚠️ Connection successful, but no models found. Please pull a model first (e.g., ollama pull llama2)';
+      ollamaTestResult.style.backgroundColor = '#fef3c7';
+      ollamaTestResult.style.color = '#92400e';
+      return;
+    }
+
+    // Test 2: Verify a model is accessible using lightweight metadata endpoint
+    const localModel = models.find(m => !m.remote_host);
+    const testModel = (localModel || models[0]).name;
+    const showResponse = await fetch(`${url}/api/show`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: testModel })
+    });
+
+    if (!showResponse.ok) {
+      let errorMsg = `${showResponse.status} ${showResponse.statusText}`;
+      try {
+        const errorData = await showResponse.json();
+        if (errorData.error) {
+          errorMsg += ` - ${errorData.error}`;
+        }
+      } catch (e) {
+        // Ignore
+      }
+      throw new Error(`Model check failed: ${errorMsg}`);
+    }
+
+    ollamaTestResult.textContent = `✅ Connection successful! Found ${models.length} model(s): ${models.map(m => m.name).join(', ')}`;
+    ollamaTestResult.style.backgroundColor = '#dcfce7';
+    ollamaTestResult.style.color = '#166534';
+  } catch (error) {
+    ollamaTestResult.textContent = `❌ Connection failed: ${error.message}`;
+    ollamaTestResult.style.backgroundColor = '#fee2e2';
+    ollamaTestResult.style.color = '#991b1b';
+  }
 };
 
 traceBtn.onclick = async () => {

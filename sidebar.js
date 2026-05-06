@@ -462,30 +462,26 @@ testOllamaBtn.onclick = async () => {
       return;
     }
 
-    // Test 2: Try a simple chat request (prefer a local model over cloud ones)
+    // Test 2: Verify a model is accessible using lightweight metadata endpoint
     const localModel = models.find(m => !m.remote_host);
     const testModel = (localModel || models[0]).name;
-    const chatResponse = await fetch(`${url}/api/chat`, {
+    const showResponse = await fetch(`${url}/api/show`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: testModel,
-        messages: [{ role: 'user', content: 'Hi' }],
-        stream: false
-      })
+      body: JSON.stringify({ model: testModel })
     });
 
-    if (!chatResponse.ok) {
-      let errorMsg = `${chatResponse.status} ${chatResponse.statusText}`;
+    if (!showResponse.ok) {
+      let errorMsg = `${showResponse.status} ${showResponse.statusText}`;
       try {
-        const errorData = await chatResponse.json();
+        const errorData = await showResponse.json();
         if (errorData.error) {
           errorMsg += ` - ${errorData.error}`;
         }
       } catch (e) {
         // Ignore
       }
-      throw new Error(`Chat API error: ${errorMsg}`);
+      throw new Error(`Model check failed: ${errorMsg}`);
     }
 
     ollamaTestResult.textContent = `✅ Connection successful! Found ${models.length} model(s): ${models.map(m => m.name).join(', ')}`;
